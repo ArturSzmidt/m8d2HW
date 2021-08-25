@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
-const authorSchema = new mongoose.Schema(
+const AuthorSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     surname: { type: String, required: true },
@@ -16,7 +16,7 @@ const authorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-authorSchema.pre('save', async function (next) {
+AuthorSchema.pre('save', async function (next) {
   const newAuthor = this;
   this.avatar = `https://ui-avatars.com/api/?name=${this.name}+${this.surname}`;
   const plainPW = newAuthor.password;
@@ -26,7 +26,7 @@ authorSchema.pre('save', async function (next) {
   next();
 });
 
-authorSchema.methods.toJSON = function () {
+AuthorSchema.methods.toJSON = function () {
   const authorDocument = this;
 
   const authorObject = authorDocument.toObject();
@@ -36,8 +36,8 @@ authorSchema.methods.toJSON = function () {
   return authorObject;
 };
 
-authorSchema.static.checkCredentials = async function (email, plainPW) {
-  const user = await this.finOne({ email });
+AuthorSchema.statics.checkCredentials = async function (email, plainPW) {
+  const user = await this.findOne({ email });
   if (user) {
     const isMatch = await bcrypt.compare(plainPW, user.password);
     if (isMatch) return user;
@@ -47,4 +47,4 @@ authorSchema.static.checkCredentials = async function (email, plainPW) {
   }
 };
 
-export default mongoose.model('Author', authorSchema);
+export default mongoose.model('Author', AuthorSchema);

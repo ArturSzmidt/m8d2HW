@@ -1,34 +1,64 @@
-import express from "express";
+import express from 'express';
 
-import fs from "fs";
+import fs from 'fs';
 
-import uniqid from "uniqid";
+import uniqid from 'uniqid';
 
-import path, { dirname } from "path";
+import path, { dirname } from 'path';
 
-import { fileURLToPath } from "url";
+import { fileURLToPath } from 'url';
 
-import { parseFile } from "../utils/upload/index.js";
+import { parseFile } from '../utils/upload/index.js';
 
-import Authors from "./schema.js";
+import AuthorsModel from './schema.js';
 
-import { generateCSV } from "../utils/csv/index.js";
+import { generateCSV } from '../utils/csv/index.js';
+import { basicAuthMiddleware } from '../auth/basic.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = dirname(__filename);
 
-const authorsFilePath = path.join(__dirname, "authors.json");
+const authorsFilePath = path.join(__dirname, 'authors.json');
 
 const router = express.Router();
 
 // get all authors
-router.get("/", async (req, res, next) => {
+router.get('/', basicAuthMiddleware, async (req, res, next) => {
   try {
-    const authors = await Authors.find({});
+    const authors = await AuthorsModel.find();
+    console.log('co to kurwa jest ', authors);
     res.send(authors);
   } catch (error) {
-    res.send(500).send({ message: error.message });
+    res.sendStatus(500);
+  }
+});
+router.get('/me', basicAuthMiddleware, async (req, res, next) => {
+  try {
+    res.send(req.user);
+  } catch (error) {
+    console.log(error);
+    next();
+  }
+});
+
+router.put('/me', basicAuthMiddleware, async (req, res, next) => {
+  try {
+    req.user.name = 'Whatever'; // modify req.user with the fields coming from req.body
+    await req.user.save();
+
+    res.send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/me', basicAuthMiddleware, async (req, res, next) => {
+  try {
+    await req.user.deleteOne();
+    res.status(204).send();
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -57,18 +87,29 @@ router.get("/", async (req, res, next) => {
 // });
 
 // create  author
-router.post("/", async (req, res, next) => {
+router.post('/', basicAuthMiddleware, async (req, res, next) => {
+  console.log('here');
   try {
-    const author = await new Authors(req.body).save();
-    res.send(author);
+    const author = new AuthorsModel(req.body);
+    const { _id } = await author.save();
+    res.send({ _id });
   } catch (error) {
     console.log({ error });
-    res.send(500).send({ message: error.message });
+  }
+});
+router.post('/register', async (req, res, next) => {
+  console.log('here');
+  try {
+    const author = new AuthorsModel(req.body);
+    const { _id } = await author.save();
+    res.send({ _id });
+  } catch (error) {
+    console.log({ error });
   }
 });
 
 // get single authors
-router.get("/:id", async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const author = await Authors.findById(req.params.id);
     if (!author) {
@@ -82,7 +123,7 @@ router.get("/:id", async (req, res, next) => {
 });
 
 // delete  author
-router.delete("/:id", async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const author = Authors.findById(req.params.id);
     if (!author) {
@@ -98,7 +139,7 @@ router.delete("/:id", async (req, res, next) => {
 });
 
 //  update author
-router.put("/:id", async (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const changedAuthor = await Authors.findByIdAndUpdate(
       req.params.id,
